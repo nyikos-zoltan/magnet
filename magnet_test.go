@@ -28,6 +28,11 @@ type DerivedStruct struct {
 	InjI I
 }
 
+type AnonDerivedStruct struct {
+	magnet.Derived
+	I
+}
+
 func Test_Magnet(t *testing.T) {
 	ctx := echo.New().NewContext(nil, nil)
 	t.Run("ok - simple", func(t *testing.T) {
@@ -60,6 +65,22 @@ func Test_Magnet(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, injD)
 		require.NotZero(t, injD.InjI)
+	})
+
+	t.Run("ok - derived struct with anonymous prop", func(t *testing.T) {
+		m := magnet.New()
+		m.RegisterMany(
+			func() I {
+				return &implI{1}
+			},
+		)
+		var injD *AnonDerivedStruct
+		_, err := m.NewCaller(func(d AnonDerivedStruct) {
+			injD = &d
+		}).Call()
+		require.NoError(t, err)
+		require.NotNil(t, injD)
+		require.NotZero(t, injD.I)
 	})
 
 	t.Run("ok - interface factory", func(t *testing.T) {
