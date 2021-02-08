@@ -2,7 +2,28 @@ package magnet
 
 import "reflect"
 
-type CallResults = []reflect.Value
+type CallResults struct{ vals []reflect.Value }
+
+func (cr CallResults) Len() int {
+	return len(cr.vals)
+}
+
+func (cr CallResults) Interface(n int) interface{} {
+	return cr.vals[n].Interface()
+}
+
+func (cr CallResults) Error(n int) error {
+	rv := cr.vals[n]
+	if rv.IsZero() {
+		return nil
+	} else {
+		return rv.Interface().(error)
+	}
+}
+
+func (cr CallResults) String(n int) string {
+	return cr.vals[0].String()
+}
 
 // Caller prepares a method and a number of extra types to be repeatedly called later.
 type Caller struct {
@@ -43,7 +64,7 @@ func (m *Magnet) NewCaller(fn interface{}, extraTypes ...reflect.Type) *Caller {
 
 // Call uses the extra arguments to call the method contained in this caller.
 // It's important to note that the order of the `extras` here and the argument types in the `NewCaller` method matter. This method will panic if the types are incompatible, unfortunately as of now there is no way to avoid this panic, you should always make sure that these calls are correct.
-func (c *Caller) Call(extras ...interface{}) (CallResults, error) {
+func (c *Caller) Call(extras ...interface{}) (*CallResults, error) {
 	c.owner.Reset()
 	for idx, extra := range extras {
 		c.extraNodes[idx].value = reflect.ValueOf(extra)
@@ -53,5 +74,5 @@ func (c *Caller) Call(extras ...interface{}) (CallResults, error) {
 		return nil, err
 	}
 
-	return CallResults(rv), nil
+	return &CallResults{rv}, nil
 }

@@ -23,5 +23,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(rv[0].String())
+	log.Println(rv.String(0))
 }

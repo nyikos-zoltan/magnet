@@ -30,8 +30,7 @@ func (m *Magnet) EchoHandler(fn interface{}) func(echo.Context) error {
 		if err != nil {
 			return err
 		}
-		err, _ = rv[0].Interface().(error)
-		return err
+		return rv.Error(0)
 	}
 }
 
@@ -40,6 +39,6 @@ func (m *Magnet) EchoMiddleware(fn interface{}) echo.MiddlewareFunc {
 	caller := m.NewCaller(fn, handlerType)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		rv, _ := caller.Call(next)
-		return rv[0].Interface().(echo.HandlerFunc)
+		return rv.Interface(0).(echo.HandlerFunc)
 	}
 }

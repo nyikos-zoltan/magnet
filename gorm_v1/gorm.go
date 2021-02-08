@@ -20,10 +20,7 @@ var gormv1DbTx = dbtx.DBTx{
 			if err != nil {
 				return err
 			}
-			if err, ok := rv[0].Interface().(error); ok {
-				return err
-			}
-			return nil
+			return rv.Error(0)
 		})
 	},
 }

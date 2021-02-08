@@ -66,8 +66,8 @@ func (s *GormV1Suite) TestOkCommit() {
 	}, gormDBType)
 	rv, err := tx.Call(s.gormDB)
 	require.NoError(s.T(), err)
-	require.Len(s.T(), rv, 1)
-	require.Nil(s.T(), rv[0].Interface())
+	require.Equal(s.T(), 1, rv.Len())
+	require.NoError(s.T(), rv.Error(0))
 }
 
 func (s *GormV1Suite) TestErrRollback() {
@@ -79,8 +79,8 @@ func (s *GormV1Suite) TestErrRollback() {
 	}, gormDBType)
 	rv, err := tx.Call(s.gormDB)
 	require.NoError(s.T(), err)
-	require.Len(s.T(), rv, 1)
-	require.Error(s.T(), rv[0].Interface().(error))
+	require.Equal(s.T(), 1, rv.Len())
+	require.Error(s.T(), rv.Error(0))
 }
 
 func TestGormV1Suite(t *testing.T) {
