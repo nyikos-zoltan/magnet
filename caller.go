@@ -19,7 +19,7 @@ func (m *Magnet) NewCaller(fn interface{}, extraTypes ...reflect.Type) *Caller {
 	child := m.NewChild()
 	fntype := reflect.TypeOf(fn)
 	reqs := calculateRequiredFn(fntype)
-	m.registerDeriveds(reqs)
+	m.runHooks(reqs...)
 	var extraNodes []*Node
 	for _, extraType := range extraTypes {
 		node := &Node{

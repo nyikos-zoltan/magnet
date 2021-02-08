@@ -8,15 +8,15 @@ type Derived struct{}
 
 var derivedType = reflect.TypeOf((*Derived)(nil)).Elem()
 
-func (m *Magnet) registerDeriveds(types []reflect.Type) {
-	for _, t := range types {
-		if t.Kind() == reflect.Struct {
-			sf, has := t.FieldByName("Derived")
-			if has && sf.Type == derivedType {
-				m.registerDerived(t)
-			}
+func derivedTypeHook(h Hook, t reflect.Type) bool {
+	if t.Kind() == reflect.Struct {
+		sf, has := t.FieldByName("Derived")
+		if has && sf.Type == derivedType {
+			h.m.registerDerived(t)
+			return true
 		}
 	}
+	return false
 }
 
 func (m *Magnet) registerDerived(dsType reflect.Type) {

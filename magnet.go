@@ -145,12 +145,18 @@ type Magnet struct {
 	parent      *Magnet
 	providerMap map[reflect.Type]*Node
 	valid       bool
+	hooks       *typeHooks
 }
 
 func newMagnet(parent *Magnet) *Magnet {
 	m := &Magnet{
 		parent:      parent,
 		providerMap: make(map[reflect.Type]*Node),
+	}
+	if parent != nil {
+		m.hooks = parent.hooks
+	} else {
+		m.hooks = &typeHooks{}
 	}
 	m.providerMap[magnetType] = &Node{
 		owner:    m,
@@ -162,13 +168,25 @@ func newMagnet(parent *Magnet) *Magnet {
 
 // New creates a new instance of Magent.
 func New() *Magnet {
-	return newMagnet(nil)
+	m := newMagnet(nil)
+	m.RegisterTypeHook(derivedTypeHook)
+	return m
 }
 
 // New creates a new child instance from m.
 // Child instances will use factory methods defined in the parent instances as well.
 func (m *Magnet) NewChild() *Magnet {
 	return newMagnet(m)
+}
+
+func (m *Magnet) RegisterTypeHook(hook TypeHook) {
+	m.hooks.register(hook)
+}
+
+func (m *Magnet) runHooks(types ...reflect.Type) {
+	for _, t := range types {
+		m.hooks.runHooks(m, t)
+	}
 }
 
 type Factory struct {
@@ -194,7 +212,7 @@ func (m *Magnet) Register(factory interface{}) *Factory {
 	ftype := fval.Type()
 	if ftype.NumOut() == 1 {
 		reqs := calculateRequiredFn(ftype)
-		m.registerDeriveds(reqs)
+		m.runHooks(reqs...)
 		n := &Node{
 			owner:    m,
 			provides: ftype.Out(0),
@@ -208,7 +226,7 @@ func (m *Magnet) Register(factory interface{}) *Factory {
 	if ftype.NumOut() == 2 {
 		if ftype.Out(1) == errorType {
 			reqs := calculateRequiredFn(ftype)
-			m.registerDeriveds(reqs)
+			m.runHooks(reqs...)
 			n := &Node{
 				owner:    m,
 				provides: ftype.Out(0),
