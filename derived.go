@@ -31,16 +31,27 @@ func (m *Magnet) registerDerived(dsType reflect.Type) {
 		fieldIdx = append(fieldIdx, i)
 	}
 
+	factroryType := reflect.FuncOf(
+		requires,
+		[]reflect.Type{dsType},
+		false,
+	)
+
+	factroryFn := reflect.MakeFunc(
+		factroryType,
+		func(in []reflect.Value) []reflect.Value {
+			derivedValue := reflect.New(dsType).Elem()
+			for i := 0; i < len(fieldIdx); i++ {
+				derivedValue.Field(fieldIdx[i]).Set(in[i])
+			}
+			return []reflect.Value{derivedValue}
+		},
+	)
+
 	m.providerMap[dsType] = &Node{
 		requires: requires,
 		provides: dsType,
 		owner:    m,
-		factory: reflect.ValueOf(func(params ...interface{}) reflect.Value {
-			derivedValue := reflect.New(dsType).Elem()
-			for i := 0; i < len(fieldIdx); i++ {
-				derivedValue.Field(fieldIdx[i]).Set(reflect.ValueOf(params[i]))
-			}
-			return derivedValue
-		}),
+		factory:  factroryFn,
 	}
 }
