@@ -14,6 +14,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/nyikos-zoltan/magnet"
 	"github.com/nyikos-zoltan/magnet/gorm_v1"
+	"github.com/nyikos-zoltan/magnet/transaction"
 )
 
 type SomeModel struct {
@@ -53,13 +54,13 @@ func (s *GormV1Suite) SetupTest() {
 	require.NoError(s.T(), err)
 }
 
-type TestTx = func(func(gorm_v1.Transaction, *gorm.DB) error) error
+type TestTx = func(func(transaction.Transaction, *gorm.DB) error) error
 
 var gormDBType = reflect.TypeOf((*gorm.DB)(nil))
 
 func (s *GormV1Suite) TestOkCommit() {
 	tx := s.magnet.NewCaller(func(tx TestTx) error {
-		return tx(func(_ gorm_v1.Transaction, txDB *gorm.DB) error {
+		return tx(func(_ transaction.Transaction, txDB *gorm.DB) error {
 			return txDB.Create(&SomeModel{}).Error
 		})
 	}, gormDBType)
@@ -71,7 +72,7 @@ func (s *GormV1Suite) TestOkCommit() {
 
 func (s *GormV1Suite) TestErrRollback() {
 	tx := s.magnet.NewCaller(func(tx TestTx) error {
-		return tx(func(_ gorm_v1.Transaction, txDB *gorm.DB) error {
+		return tx(func(_ transaction.Transaction, txDB *gorm.DB) error {
 			txDB.Create(&SomeModel{})
 			return errors.New("some error")
 		})
