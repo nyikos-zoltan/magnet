@@ -34,7 +34,6 @@ type AnonDerivedStruct struct {
 }
 
 func Test_Magnet(t *testing.T) {
-	ctx := echo.New().NewContext(nil, nil)
 	t.Run("ok - simple", func(t *testing.T) {
 		m := magnet.New()
 		m.Register(func() A {
