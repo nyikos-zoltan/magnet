@@ -2,10 +2,11 @@ package magnet_test
 
 import (
 	"errors"
+	"sort"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	"github.com/nyikos-zoltan/magnet"
+	magnetErrors "github.com/nyikos-zoltan/magnet/internal/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,6 +34,29 @@ type AnonDerivedStruct struct {
 	I
 }
 
+func recoverPanic(f func()) interface{} {
+	var msg interface{}
+	func() {
+		defer func() {
+			msg = recover()
+		}()
+		f()
+	}()
+	return msg
+}
+
+func checkCycleError(t *testing.T, expectedCycle []string, panicMsg interface{}) {
+	t.Helper()
+	err, ok := panicMsg.(error)
+	require.True(t, ok)
+	var ce magnetErrors.CycleError
+	require.True(t, errors.As(err, &ce))
+	loop := ce.Loop()
+	sort.Strings(loop)
+	sort.Strings(expectedCycle)
+	require.Equal(t, expectedCycle, loop)
+}
+
 func Test_Magnet(t *testing.T) {
 	t.Run("ok - simple", func(t *testing.T) {
 		m := magnet.New()
@@ -40,13 +64,12 @@ func Test_Magnet(t *testing.T) {
 			return A{}
 		})
 
-		ctx := echo.New().NewContext(nil, nil)
-
 		var injA *A
-		require.NoError(t, m.EchoHandler(func(a A) error {
+		rv, err := m.NewCaller(func(a A) {
 			injA = &a
-			return nil
-		})(ctx))
+		}).Call()
+		require.NoError(t, err)
+		require.Zero(t, rv.Len())
 		require.NotNil(t, injA)
 	})
 
@@ -116,11 +139,13 @@ func Test_Magnet(t *testing.T) {
 			return A{}, nil
 		})
 
-		require.Panics(t, func() {
+		err := recoverPanic(func() {
 			m.NewCaller(func(B) error {
 				return nil
 			})
 		})
+
+		require.Equal(t, "type magnet_test.B cannot be constructed!", err)
 	})
 
 	t.Run("panic - cycle", func(t *testing.T) {
@@ -129,7 +154,7 @@ func Test_Magnet(t *testing.T) {
 		m.Register(func(A) A { return A{} })
 		require.Panics(t, func() {
 			m.NewCaller(func(A) error { return nil })
-		})
+		}, "cycle found!")
 	})
 
 	t.Run("panic - large cycle", func(t *testing.T) {
@@ -139,12 +164,13 @@ func Test_Magnet(t *testing.T) {
 		type B struct{}
 		type C struct{}
 
-		require.Panics(t, func() {
+		msg := recoverPanic(func() {
 			m.Register(func(A) B { return B{} })
 			m.Register(func(B) C { return C{} })
 			m.Register(func(C) A { return A{} })
 			m.NewCaller(func(A) error { return nil })
 		})
+		checkCycleError(t, []string{"A", "B", "C"}, msg)
 	})
 
 	t.Run("panic - complex cycle", func(t *testing.T) {
@@ -154,11 +180,28 @@ func Test_Magnet(t *testing.T) {
 		type B struct{}
 		type C struct{}
 
-		require.Panics(t, func() {
-			m.Register(func(A, B, C) B { return B{} })
-			m.Register(func(A, B, C) C { return C{} })
-			m.Register(func(A, B, C) A { return A{} })
+		msg := recoverPanic(func() {
+			m.Register(func(A, C) B { return B{} })
+			m.Register(func(A, B) C { return C{} })
+			m.Register(func(B, C) A { return A{} })
 			m.NewCaller(func(A) error { return nil })
 		})
+		checkCycleError(t, []string{"A", "B"}, msg)
+	})
+
+	t.Run("panic - cycle through parent", func(t *testing.T) {
+		m := magnet.New()
+
+		type A struct{}
+		type B struct{}
+
+		msg := recoverPanic(func() {
+			m.Register(func() B { return B{} })
+			m.Register(func(B) A { return A{} })
+			c := m.NewChild()
+			c.Register(func(A) B { return B{} })
+			c.NewCaller(func(A) error { return nil })
+		})
+		checkCycleError(t, []string{"A", "B"}, msg)
 	})
 }

@@ -3,6 +3,8 @@ package magnet
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/nyikos-zoltan/magnet/internal/errors"
 )
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -46,20 +48,48 @@ func (m *Magnet) call(fn interface{}, reqs []reflect.Type) ([]reflect.Value, err
 	return reflect.ValueOf(fn).Call(vals), nil
 }
 
-func (m *Magnet) dfs_visit(t reflect.Type, disc, finish map[reflect.Type]bool) bool {
-	if _, has := m.providerMap[t]; !has {
-		return false
+func (m *Magnet) makeLoopError(loop map[reflect.Type]bool) error {
+	var deps []string
+	var first reflect.Type
+	for k := range loop {
+		first = k
+		break
+	}
+
+	n := first
+	for n != nil {
+		for _, r := range m.findNode(n).requires {
+			deps = append(deps, n.Name())
+			if r == first {
+				n = nil
+				break
+			}
+
+			if _, has := loop[r]; has {
+				delete(loop, r)
+				n = r
+				break
+			}
+		}
+	}
+	return errors.NewCycleError(deps)
+}
+
+func (m *Magnet) dfs_visit(t reflect.Type, disc, finish map[reflect.Type]bool) error {
+	node := m.findNode(t)
+	if node == nil {
+		return nil
 	}
 	disc[t] = true
 
-	for _, v := range m.providerMap[t].requires {
+	for _, v := range node.requires {
 		if _, has := disc[v]; has {
-			return true
+			return m.makeLoopError(disc)
 		}
 
 		if _, has := finish[v]; !has {
-			if m.dfs_visit(v, disc, finish) {
-				return true
+			if err := m.dfs_visit(v, disc, finish); err != nil {
+				return err
 			}
 		}
 	}
@@ -67,14 +97,26 @@ func (m *Magnet) dfs_visit(t reflect.Type, disc, finish map[reflect.Type]bool) b
 	delete(disc, t)
 	finish[t] = true
 
-	return false
+	return nil
 }
 
-func (m *Magnet) dfs() bool {
+func (m *Magnet) collectAllTypes(into *[]reflect.Type) {
+	for k := range m.providerMap {
+		*into = append(*into, k)
+	}
+	if m.parent != nil {
+		m.parent.collectAllTypes(into)
+	}
+}
+
+func (m *Magnet) dfs() error {
 	disc := make(map[reflect.Type]bool)
 	finish := make(map[reflect.Type]bool)
 
-	for k := range m.providerMap {
+	var types []reflect.Type
+	m.collectAllTypes(&types)
+
+	for _, k := range types {
 		if _, discovered := disc[k]; discovered {
 			continue
 		}
@@ -82,17 +124,17 @@ func (m *Magnet) dfs() bool {
 			continue
 		}
 
-		if m.dfs_visit(k, disc, finish) {
-			return true
+		if err := m.dfs_visit(k, disc, finish); err != nil {
+			return err
 		}
 	}
-	return false
+	return nil
 }
 
 func (m *Magnet) detectCycles() {
 	if !m.valid {
-		if m.dfs() {
-			panic("cycle found!")
+		if err := m.dfs(); err != nil {
+			panic(err)
 		}
 
 	}
