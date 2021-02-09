@@ -13,7 +13,7 @@ type DBTx struct {
 	Callback func(*magnet.Caller, interface{}) error
 }
 
-var safeTxType = reflect.TypeOf(transaction.Transaction{})
+var safeTxType = reflect.TypeOf(transaction.Tx{})
 var errType = reflect.TypeOf((*error)(nil)).Elem()
 var magnetType = reflect.TypeOf(&magnet.Magnet{})
 

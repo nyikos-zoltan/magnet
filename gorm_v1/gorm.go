@@ -16,7 +16,7 @@ var gormv1DbTx = dbtx.DBTx{
 	Callback: func(c *magnet.Caller, dbI interface{}) error {
 		db := dbI.(*gorm.DB)
 		return db.Transaction(func(tx *gorm.DB) error {
-			rv, err := c.Call(tx, transaction.Transaction{})
+			rv, err := c.Call(tx, transaction.Tx{})
 			if err != nil {
 				return err
 			}

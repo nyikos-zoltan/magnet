@@ -54,13 +54,13 @@ func (s *GormV1Suite) SetupTest() {
 	require.NoError(s.T(), err)
 }
 
-type TestTx = func(func(transaction.Transaction, *gorm.DB) error) error
+type TestTx = func(func(transaction.Tx, *gorm.DB) error) error
 
 var gormDBType = reflect.TypeOf((*gorm.DB)(nil))
 
 func (s *GormV1Suite) TestOkCommit() {
 	tx := s.magnet.NewCaller(func(tx TestTx) error {
-		return tx(func(_ transaction.Transaction, txDB *gorm.DB) error {
+		return tx(func(_ transaction.Tx, txDB *gorm.DB) error {
 			return txDB.Create(&SomeModel{}).Error
 		})
 	}, gormDBType)
@@ -72,7 +72,7 @@ func (s *GormV1Suite) TestOkCommit() {
 
 func (s *GormV1Suite) TestErrRollback() {
 	tx := s.magnet.NewCaller(func(tx TestTx) error {
-		return tx(func(_ transaction.Transaction, txDB *gorm.DB) error {
+		return tx(func(_ transaction.Tx, txDB *gorm.DB) error {
 			txDB.Create(&SomeModel{})
 			return errors.New("some error")
 		})
