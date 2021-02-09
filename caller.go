@@ -50,6 +50,7 @@ func (m *Magnet) NewCaller(fn interface{}, extraTypes ...reflect.Type) *Caller {
 		child.providerMap[extraType] = node
 		extraNodes = append(extraNodes, node)
 	}
+	child.detectCycles()
 	child.validate(reqs)
 	child.copyOwned(reqs)
 

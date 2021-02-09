@@ -5,7 +5,6 @@ go 1.15
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/bitly/go-simplejson v0.5.0 // indirect
-	github.com/c2fo/testify v0.0.0-20150827203832-fba96363964a
 	github.com/digitalocean/go-workers2 v0.10.0
 	github.com/garyburd/redigo v1.6.2 // indirect
 	github.com/jinzhu/gorm v1.9.16

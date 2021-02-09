@@ -97,6 +97,9 @@ func (m *Magnet) detectCycles() {
 
 	}
 	m.valid = true
+	if m.parent != nil {
+		m.parent.detectCycles()
+	}
 }
 
 func (m *Magnet) copyOwned(candidates []reflect.Type) {

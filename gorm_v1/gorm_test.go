@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/c2fo/testify/require"
-	"github.com/c2fo/testify/suite"
 	"github.com/jinzhu/gorm"
 	"github.com/nyikos-zoltan/magnet"
 	"github.com/nyikos-zoltan/magnet/gorm_v1"
 	"github.com/nyikos-zoltan/magnet/transaction"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type SomeModel struct {

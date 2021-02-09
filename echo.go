@@ -20,7 +20,6 @@ var handlerType = reflect.TypeOf((*echo.HandlerFunc)(nil)).Elem()
 
 // EchoHandler creates a new echo.HandlerFunc that injects the required values
 func (m *Magnet) EchoHandler(fn interface{}) func(echo.Context) error {
-	m.detectCycles()
 	fntype := reflect.TypeOf(fn)
 	validateEchoHandlerFn(fntype)
 	caller := m.NewCaller(fn, ctxType)
@@ -35,7 +34,6 @@ func (m *Magnet) EchoHandler(fn interface{}) func(echo.Context) error {
 }
 
 func (m *Magnet) EchoMiddleware(fn interface{}) echo.MiddlewareFunc {
-	m.detectCycles()
 	caller := m.NewCaller(fn, handlerType)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		rv, _ := caller.Call(next)
