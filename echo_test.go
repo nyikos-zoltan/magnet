@@ -2,10 +2,14 @@ package magnet_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nyikos-zoltan/magnet"
+	"github.com/nyikos-zoltan/magnet/gorm_v1"
+	magnetErrs "github.com/nyikos-zoltan/magnet/internal/errors"
+	"github.com/nyikos-zoltan/magnet/transaction"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -94,6 +98,17 @@ func (s *EchoTestSuite) TestPanicHandlerFnInvalid() {
 
 	require.Panics(s.T(), func() {
 		s.m.EchoHandler(func(A) {
+		})
+	})
+}
+func (s *EchoTestSuite) TestPanicHandlerCantBeBuilt() {
+	gorm_v1.Use(s.m)
+	type txType = func(func(transaction.Tx, A) error) error
+
+	expectedValue := magnetErrs.NewCannotBeBuiltErr(reflect.TypeOf(A{}))
+	require.PanicsWithValue(s.T(), expectedValue, func() {
+		s.m.EchoHandler(func(a txType) error {
+			return nil
 		})
 	})
 }

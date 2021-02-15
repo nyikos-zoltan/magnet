@@ -17,7 +17,7 @@ func (m *Magnet) canBuildType(t reflect.Type) bool {
 func (m *Magnet) validate(requires []reflect.Type) {
 	for _, t := range requires {
 		if !m.canBuildType(t) {
-			panic(fmt.Sprintf("type %s cannot be constructed!", t))
+			panic(errors.NewCannotBeBuiltErr(t))
 		}
 	}
 }

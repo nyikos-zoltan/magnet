@@ -2,6 +2,7 @@ package magnet_test
 
 import (
 	"errors"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -160,13 +161,12 @@ func Test_Magnet(t *testing.T) {
 			return A{}, nil
 		})
 
-		err := recoverPanic(func() {
+		expectedPanic := magnetErrors.NewCannotBeBuiltErr(reflect.TypeOf(B{}))
+		require.PanicsWithValue(t, expectedPanic, func() {
 			m.NewCaller(func(B) error {
 				return nil
 			})
 		})
-
-		require.Equal(t, "type magnet_test.B cannot be constructed!", err)
 	})
 
 	t.Run("panic - cycle", func(t *testing.T) {
