@@ -38,6 +38,10 @@ func unwrapValue(v reflect.Value) reflect.Value {
 	}
 }
 
+func (n *Node) Reset() {
+	n.value = reflect.Value{}
+}
+
 // Build uses the factory method to generate its value, then stores it for later use
 func (n *Node) Build(m *Magnet) (reflect.Value, error) {
 	if n.value == (reflect.Value{}) || n.forceRecreate {
@@ -61,11 +65,12 @@ func (n *Node) Build(m *Magnet) (reflect.Value, error) {
 	return n.value, nil
 }
 
-// Needs returns if the given instance of Magnet is required to build this node
-func (n *Node) Needs(m *Magnet) bool {
+func (n *Node) NeedsAny(types []reflect.Type) bool {
 	for _, v := range n.requires {
-		if _, has := m.providerMap[v]; has {
-			return true
+		for _, t := range types {
+			if v == t {
+				return true
+			}
 		}
 	}
 	return false

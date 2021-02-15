@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nyikos-zoltan/magnet"
 	magnetErrors "github.com/nyikos-zoltan/magnet/internal/errors"
 	"github.com/stretchr/testify/require"
@@ -116,6 +117,26 @@ func Test_Magnet(t *testing.T) {
 		}).Call()
 		require.NoError(t, err)
 		require.NotNil(t, injI)
+	})
+
+	t.Run("ok - reset", func(t *testing.T) {
+		m := magnet.New()
+		count := 0
+		ctx := echo.New().NewContext(nil, nil)
+		m.Register(func() I {
+			count += 1
+			return &implI{1}
+		})
+		call := m.EchoHandler(func(_ echo.Context, _ I) error {
+			return nil
+		})
+		require.NoError(t, call(ctx))
+		require.NoError(t, call(ctx))
+		require.Equal(t, 1, count)
+		m.Reset()
+
+		require.NoError(t, call(ctx))
+		require.Equal(t, 2, count)
 	})
 
 	t.Run("err - build of type failed", func(t *testing.T) {

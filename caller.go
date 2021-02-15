@@ -1,6 +1,8 @@
 package magnet
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type CallResults struct{ vals []reflect.Value }
 
@@ -34,13 +36,49 @@ type Caller struct {
 	owner      *Magnet
 }
 
+func (m *Magnet) findPath(from reflect.Type, to reflect.Type) map[reflect.Type]bool {
+	path := make(map[reflect.Type]bool)
+	path[from] = true
+	fromNode := m.findNode(from)
+	for _, req := range fromNode.requires {
+		if req != to {
+			rest := m.findPath(req, to)
+			for k := range rest {
+				path[k] = true
+			}
+		} else {
+			path[from] = true
+			path[to] = true
+		}
+	}
+	if len(path) > 1 {
+		return path
+	} else {
+		return nil
+	}
+}
+
+func findOverrides(m *Magnet, reqs []reflect.Type, extraTypes map[reflect.Type]bool) map[*Node]bool {
+	overrides := make(map[*Node]bool)
+	for _, req := range reqs {
+		for extra := range extraTypes {
+			path := m.findPath(req, extra)
+			for t := range path {
+				node := m.findNode(t)
+				overrides[node] = true
+			}
+		}
+	}
+	return overrides
+}
+
 // NewCaller creates a new caller from a method (fn) and some predefined types (extraTypes).
 // It's important to note that the order of the `extraTypes` here and the specific arguments in the `Caller.Call` method matter.
 func (m *Magnet) NewCaller(fn interface{}, extraTypes ...reflect.Type) *Caller {
 	child := m.NewChild()
 	fntype := reflect.TypeOf(fn)
 	reqs := calculateRequiredFn(fntype)
-	m.runHooks(reqs...)
+	child.runHooks(reqs...)
 	var extraNodes []*Node
 	for _, extraType := range extraTypes {
 		node := &Node{
@@ -52,7 +90,18 @@ func (m *Magnet) NewCaller(fn interface{}, extraTypes ...reflect.Type) *Caller {
 	}
 	child.detectCycles()
 	child.validate(reqs)
-	child.copyOwned(reqs)
+
+	extraTypeMap := make(map[reflect.Type]bool)
+	for _, extra := range extraTypes {
+		extraTypeMap[extra] = true
+	}
+
+	for n := range findOverrides(child, reqs, extraTypeMap) {
+		if n.owner != child {
+			node := n.cloneTo(child)
+			child.providerMap[node.provides] = node
+		}
+	}
 
 	return &Caller{
 		fn:         fn,

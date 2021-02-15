@@ -144,25 +144,24 @@ func (m *Magnet) detectCycles() {
 	}
 }
 
-func (m *Magnet) copyOwned(candidates []reflect.Type) {
-	for _, v := range candidates {
-		cNode := m.findNode(v)
-		if cNode == nil {
-			panic(fmt.Sprintf("type %s cannot be built!", v))
-		}
-		for _, node := range cNode.CollectDependencies(m) {
-			if node.Needs(m) && node.owner != m {
-				m.providerMap[node.provides] = node.cloneTo(m)
-			}
+func (m *Magnet) NeedsAny(dep []reflect.Type) []*Node {
+	var nodes []*Node
+	for _, node := range m.providerMap {
+		if node.NeedsAny(dep) {
+			nodes = append(nodes, node)
 		}
 	}
+	if m.parent != nil {
+		nodes = append(nodes, m.parent.NeedsAny(dep)...)
+	}
+	return nodes
 }
 
 // Reset clears all cached values in this instance
 func (m *Magnet) Reset() {
 	for k, v := range m.providerMap {
 		if k != magnetType {
-			v.value = reflect.Value{}
+			v.Reset()
 		}
 	}
 

@@ -17,10 +17,11 @@ type HookResult struct {
 
 func (h Hook) RegisterNewType(requires []reflect.Type, provides reflect.Type, factory interface{}) {
 	h.m.providerMap[provides] = &Node{
-		requires: requires,
-		provides: provides,
-		owner:    h.m,
-		factory:  reflect.ValueOf(factory),
+		requires:      requires,
+		provides:      provides,
+		owner:         h.m,
+		factory:       reflect.ValueOf(factory),
+		forceRecreate: true,
 	}
 }
 
