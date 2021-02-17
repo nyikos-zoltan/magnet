@@ -3,6 +3,7 @@ package magnet
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/nyikos-zoltan/magnet/internal/errors"
 )
@@ -48,39 +49,20 @@ func (m *Magnet) call(fn interface{}, reqs []reflect.Type) ([]reflect.Value, err
 	return reflect.ValueOf(fn).Call(vals), nil
 }
 
-func (m *Magnet) makeLoopError(loop map[reflect.Type]bool) error {
+func (m *Magnet) makeLoopError(loop map[reflect.Type]*Node) error {
 	var deps []string
-	var first reflect.Type
-	for k := range loop {
-		first = k
-		break
-	}
-
-	n := first
-	for n != nil {
-		for _, r := range m.findNode(n).requires {
-			deps = append(deps, n.Name())
-			if r == first {
-				n = nil
-				break
-			}
-
-			if _, has := loop[r]; has {
-				delete(loop, r)
-				n = r
-				break
-			}
-		}
+	for _, n := range loop {
+		deps = append(deps, n.provides.Name())
 	}
 	return errors.NewCycleError(deps)
 }
 
-func (m *Magnet) dfs_visit(t reflect.Type, disc, finish map[reflect.Type]bool) error {
+func (m *Magnet) dfs_visit(t reflect.Type, disc map[reflect.Type]*Node, finish map[reflect.Type]bool) error {
 	node := m.findNode(t)
 	if node == nil {
 		return nil
 	}
-	disc[t] = true
+	disc[t] = node
 
 	for _, v := range node.requires {
 		if _, has := disc[v]; has {
@@ -100,6 +82,12 @@ func (m *Magnet) dfs_visit(t reflect.Type, disc, finish map[reflect.Type]bool) e
 	return nil
 }
 
+type byName []reflect.Type
+
+func (t byName) Len() int           { return len(t) }
+func (t byName) Less(i, j int) bool { return t[i].Name() < t[j].Name() }
+func (t byName) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
+
 func (m *Magnet) collectAllTypes(into *[]reflect.Type) {
 	for k := range m.providerMap {
 		*into = append(*into, k)
@@ -107,10 +95,11 @@ func (m *Magnet) collectAllTypes(into *[]reflect.Type) {
 	if m.parent != nil {
 		m.parent.collectAllTypes(into)
 	}
+	sort.Sort(byName(*into))
 }
 
 func (m *Magnet) dfs() error {
-	disc := make(map[reflect.Type]bool)
+	disc := make(map[reflect.Type]*Node)
 	finish := make(map[reflect.Type]bool)
 
 	var types []reflect.Type
