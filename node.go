@@ -5,6 +5,41 @@ import (
 	"reflect"
 )
 
+func calculateRequiredFn(ftype reflect.Type) []reflect.Type {
+	var rv []reflect.Type
+	for i := 0; i < ftype.NumIn(); i++ {
+		rv = append(rv, ftype.In(i))
+	}
+	return rv
+}
+
+func NewNode(factory interface{}, owner *Magnet) (*Node, error) {
+	fval := reflect.ValueOf(factory)
+	ftype := fval.Type()
+	reqs := calculateRequiredFn(ftype)
+	if ftype.NumOut() == 1 {
+		return &Node{
+			owner:    owner,
+			provides: ftype.Out(0),
+			requires: reqs,
+			factory:  fval,
+			fallible: false,
+		}, nil
+	}
+	if ftype.NumOut() == 2 {
+		if ftype.Out(1) == errorType {
+			return &Node{
+				owner:    owner,
+				provides: ftype.Out(0),
+				requires: reqs,
+				factory:  fval,
+				fallible: true,
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("invalid factory %s", ftype)
+}
+
 // Node describes a factory method, its inputs and outputs
 type Node struct {
 	owner         *Magnet

@@ -74,9 +74,7 @@ func (txDef *DBTx) SafeTxHook(h magnet.Hook, txType reflect.Type) bool {
 					},
 				)
 
-				h.RegisterNewType(
-					factoryParams,
-					txType,
+				h.Register(
 					factory.Interface(),
 				)
 

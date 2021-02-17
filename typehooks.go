@@ -12,17 +12,8 @@ type Hook struct {
 	m *Magnet
 }
 
-type HookResult struct {
-}
-
-func (h Hook) RegisterNewType(requires []reflect.Type, provides reflect.Type, factory interface{}) {
-	h.m.providerMap[provides] = &Node{
-		requires:      requires,
-		provides:      provides,
-		owner:         h.m,
-		factory:       reflect.ValueOf(factory),
-		forceRecreate: true,
-	}
+func (h Hook) Register(factory interface{}) {
+	h.m.Register(factory).RecreateAlways()
 }
 
 func (h Hook) ValidateDeps(deps []reflect.Type) {

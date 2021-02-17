@@ -1,7 +1,6 @@
 package magnet
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 
@@ -21,14 +20,6 @@ func (m *Magnet) validate(requires []reflect.Type) {
 			panic(errors.NewCannotBeBuiltErr(t))
 		}
 	}
-}
-
-func calculateRequiredFn(ftype reflect.Type) []reflect.Type {
-	var rv []reflect.Type
-	for i := 0; i < ftype.NumIn(); i++ {
-		rv = append(rv, ftype.In(i))
-	}
-	return rv
 }
 
 func (m *Magnet) findNode(t reflect.Type) *Node {
@@ -241,35 +232,11 @@ func (m *Magnet) RegisterMany(factories ...interface{}) {
 // Factories are methods that have any number of arguments and return a single value and possible an error.
 func (m *Magnet) Register(factory interface{}) *Factory {
 	m.valid = false
-	fval := reflect.ValueOf(factory)
-	ftype := fval.Type()
-	if ftype.NumOut() == 1 {
-		reqs := calculateRequiredFn(ftype)
-		m.runHooks(reqs...)
-		n := &Node{
-			owner:    m,
-			provides: ftype.Out(0),
-			requires: reqs,
-			factory:  fval,
-			fallible: false,
-		}
-		m.providerMap[ftype.Out(0)] = n
-		return &Factory{n}
+	node, err := NewNode(factory, m)
+	if err != nil {
+		panic(err)
 	}
-	if ftype.NumOut() == 2 {
-		if ftype.Out(1) == errorType {
-			reqs := calculateRequiredFn(ftype)
-			m.runHooks(reqs...)
-			n := &Node{
-				owner:    m,
-				provides: ftype.Out(0),
-				requires: reqs,
-				factory:  fval,
-				fallible: true,
-			}
-			m.providerMap[ftype.Out(0)] = n
-			return &Factory{n}
-		}
-	}
-	panic(fmt.Sprintf("invalid factory %s %s", ftype.Out(1), errorType))
+	m.runHooks(node.requires...)
+	m.providerMap[node.provides] = node
+	return &Factory{node}
 }
