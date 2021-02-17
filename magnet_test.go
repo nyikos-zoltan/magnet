@@ -65,6 +65,7 @@ func Test_Magnet(t *testing.T) {
 		m.Register(func() A {
 			return A{}
 		})
+		require.NoError(t, m.Prepare())
 
 		var injA *A
 		rv, err := m.NewCaller(func(a A) {
@@ -82,6 +83,7 @@ func Test_Magnet(t *testing.T) {
 				return &implI{1}
 			},
 		)
+		require.NoError(t, m.Prepare())
 		var injD *DerivedStruct
 		_, err := m.NewCaller(func(d DerivedStruct) {
 			injD = &d
@@ -98,6 +100,7 @@ func Test_Magnet(t *testing.T) {
 				return &implI{1}
 			},
 		)
+		require.NoError(t, m.Prepare())
 		var injD *AnonDerivedStruct
 		_, err := m.NewCaller(func(d AnonDerivedStruct) {
 			injD = &d
@@ -112,6 +115,7 @@ func Test_Magnet(t *testing.T) {
 		m.Register(func() I {
 			return &implI{1}
 		})
+		require.NoError(t, m.Prepare())
 		var injI I
 		_, err := m.NewCaller(func(i I) {
 			injI = i
@@ -131,6 +135,7 @@ func Test_Magnet(t *testing.T) {
 		call := m.EchoHandler(func(_ echo.Context, _ I) error {
 			return nil
 		})
+		require.NoError(t, m.Prepare())
 		require.NoError(t, call(ctx))
 		require.NoError(t, call(ctx))
 		require.Equal(t, 1, count)
@@ -143,15 +148,9 @@ func Test_Magnet(t *testing.T) {
 	t.Run("err - build of type failed", func(t *testing.T) {
 		m := magnet.New()
 		m.Register(func() (A, error) {
-			return A{}, errors.New("failed to build A")
+			return A{}, errors.New("factory error in A")
 		})
-
-		c := m.NewCaller(func(A) error {
-			return nil
-		})
-
-		_, err := c.Call()
-		require.Error(t, err, "failed to build A")
+		require.Errorf(t, m.Prepare(), "factory error in A")
 	})
 
 	t.Run("panic - types cannot be built", func(t *testing.T) {
@@ -160,6 +159,7 @@ func Test_Magnet(t *testing.T) {
 		m.Register(func() (A, error) {
 			return A{}, nil
 		})
+		require.NoError(t, m.Prepare())
 
 		expectedPanic := magnetErrors.NewCannotBeBuiltErr(reflect.TypeOf(B{}))
 		require.PanicsWithValue(t, expectedPanic, func() {
@@ -174,7 +174,7 @@ func Test_Magnet(t *testing.T) {
 
 		m.Register(func(A) A { return A{} })
 		require.Panics(t, func() {
-			m.NewCaller(func(A) error { return nil })
+			_ = m.Prepare()
 		}, "cycle found!")
 	})
 
@@ -189,7 +189,7 @@ func Test_Magnet(t *testing.T) {
 			m.Register(func(A) B { return B{} })
 			m.Register(func(B) C { return C{} })
 			m.Register(func(C) A { return A{} })
-			m.NewCaller(func(A) error { return nil })
+			_ = m.Prepare()
 		})
 		checkCycleError(t, []string{"A", "B", "C"}, msg)
 	})
@@ -205,7 +205,7 @@ func Test_Magnet(t *testing.T) {
 			m.Register(func(A, C) B { return B{} })
 			m.Register(func(A, B) C { return C{} })
 			m.Register(func(B, C) A { return A{} })
-			m.NewCaller(func(A) error { return nil })
+			_ = m.Prepare()
 		})
 		checkCycleError(t, []string{"A", "B"}, msg)
 	})
@@ -221,7 +221,7 @@ func Test_Magnet(t *testing.T) {
 			m.Register(func(B) A { return A{} })
 			c := m.NewChild()
 			c.Register(func(A) B { return B{} })
-			c.NewCaller(func(A) error { return nil })
+			_ = c.Prepare()
 		})
 		checkCycleError(t, []string{"A", "B"}, msg)
 	})
