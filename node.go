@@ -13,6 +13,23 @@ func calculateRequiredFn(ftype reflect.Type) []reflect.Type {
 	return rv
 }
 
+func NewValueNode(v interface{}, owner *Magnet) *Node {
+	val := reflect.ValueOf(v)
+	vtype := val.Type()
+	return &Node{
+		owner:    owner,
+		provides: vtype,
+		value:    val,
+	}
+}
+
+func NewEmptyNode(t reflect.Type, owner *Magnet) *Node {
+	return &Node{
+		owner:    owner,
+		provides: t,
+	}
+}
+
 func NewNode(factory interface{}, owner *Magnet) (*Node, error) {
 	fval := reflect.ValueOf(factory)
 	ftype := fval.Type()
