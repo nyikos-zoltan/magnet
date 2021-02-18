@@ -40,6 +40,9 @@ func (m *Magnet) findPath(from reflect.Type, to reflect.Type) map[reflect.Type]b
 	path := make(map[reflect.Type]bool)
 	path[from] = true
 	fromNode := m.findNode(from)
+	if fromNode == nil {
+		return nil
+	}
 	for _, req := range fromNode.requires {
 		if req != to {
 			rest := m.findPath(req, to)

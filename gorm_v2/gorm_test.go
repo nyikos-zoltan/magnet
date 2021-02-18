@@ -38,8 +38,7 @@ type GormV2Suite struct {
 }
 
 func (s *GormV2Suite) SetupTest() {
-	s.magnet = magnet.New()
-	gorm_v2.Use(s.magnet)
+	s.magnet = magnet.New(gorm_v2.Plugin)
 	var err error
 	var db *sql.DB
 	db, s.mock, err = sqlmock.New()

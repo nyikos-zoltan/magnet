@@ -1,8 +1,11 @@
 package magnet
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
+
+	stdErrors "errors"
 
 	"github.com/nyikos-zoltan/magnet/internal/errors"
 )
@@ -147,10 +150,16 @@ func (m *Magnet) Reset() {
 
 }
 
+var UnknownTypeErr = stdErrors.New("unknown type")
+
 // Build uses the instance (and its parents) to resolve a specific value.
 // This method will at this point create all dependencies of `t` to create a value of it.
 func (m *Magnet) Build(t reflect.Type) (reflect.Value, error) {
-	return m.findNode(t).Build(m)
+	if node := m.findNode(t); node != nil {
+		return m.findNode(t).Build(m)
+	} else {
+		return reflect.Value{}, fmt.Errorf("%s is %w", t, UnknownTypeErr)
+	}
 }
 func (m *Magnet) BuildMany(types []reflect.Type) ([]reflect.Value, error) {
 	var vals []reflect.Value
