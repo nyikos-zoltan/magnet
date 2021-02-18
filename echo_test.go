@@ -102,7 +102,7 @@ func (s *EchoTestSuite) TestPanicHandlerFnInvalid() {
 	})
 }
 func (s *EchoTestSuite) TestPanicHandlerCantBeBuilt() {
-	gorm_v1.Use(s.m)
+	gorm_v1.Plugin(s.m)
 	type txType = func(func(transaction.Tx, A) error) error
 
 	expectedValue := magnetErrs.NewCannotBeBuiltErr(reflect.TypeOf(A{}))

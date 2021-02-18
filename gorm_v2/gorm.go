@@ -25,6 +25,6 @@ var gormv2DbTx = dbtx.DBTx{
 	},
 }
 
-func Use(m *magnet.Magnet) {
+func Plugin(m *magnet.Magnet) {
 	m.RegisterTypeHook(gormv2DbTx.SafeTxHook)
 }
