@@ -71,6 +71,11 @@ var dbTXDef = dbtx.DBTx{
 
 type testTx = func(func(transaction.Tx, Service) error) error
 
+type HandlerDeps struct {
+	magnet.Derived
+	Tx testTx
+}
+
 func Test_Complete(t *testing.T) {
 	m := magnet.New()
 	m.RegisterTypeHook(dbTXDef.SafeTxHook)
@@ -78,8 +83,8 @@ func Test_Complete(t *testing.T) {
 	m.Register(func(d *DB) Repo { return &repo{d} })
 	m.Register(func(r Repo) Service { return &service{r} })
 	ctx := echo.New().NewContext(nil, nil)
-	h2 := m.EchoHandler(func(e echo.Context, t testTx) error {
-		return t(func(_ transaction.Tx, s Service) error {
+	h2 := m.EchoHandler(func(e echo.Context, d HandlerDeps) error {
+		return d.Tx(func(_ transaction.Tx, s Service) error {
 			return s.Do()
 		})
 	})
