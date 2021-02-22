@@ -48,10 +48,5 @@ func (m *Magnet) registerDerived(dsType reflect.Type) {
 		},
 	)
 
-	m.providerMap[dsType] = &Node{
-		requires: requires,
-		provides: dsType,
-		owner:    m,
-		factory:  factroryFn,
-	}
+	m.Register(factroryFn.Interface())
 }
