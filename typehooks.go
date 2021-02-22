@@ -17,6 +17,7 @@ func (h Hook) Register(factory interface{}) {
 }
 
 func (h Hook) ValidateDeps(deps []reflect.Type) {
+	h.m.runHooks(deps...)
 	h.m.validate(deps)
 }
 
