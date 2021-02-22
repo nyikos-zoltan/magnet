@@ -1,7 +1,9 @@
 package magnet_test
 
 import (
+	"context"
 	"errors"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -87,12 +89,25 @@ func Test_Complete(t *testing.T) {
 	m.Register(func() *DB { return &DB{} })
 	m.Register(func(d *DB) Repo { return &repo{d} })
 	m.Register(func(r Repo) Service { return &service{r} })
-	ctx := echo.New().NewContext(nil, nil)
-	h2 := m.EchoHandler(func(e echo.Context, d HandlerDeps) error {
+	e := echo.New()
+	go func() {
+		require.Errorf(t, e.Start("127.0.0.1:19999"), "http: Server closed")
+	}()
+	e.GET("/", m.EchoHandler(func(e echo.Context, d HandlerDeps) error {
 		return d.Tx(func(_ transaction.Tx, t testTxDeps) error {
 			return t.S.Do()
 		})
-	})
-	require.NoError(t, h2(ctx))
-	require.NoError(t, h2(ctx))
+	}))
+	c := http.Client{}
+	{
+		resp, err := c.Get("http://127.0.0.1:19999")
+		require.NoError(t, err)
+		require.Equal(t, 200, resp.StatusCode)
+	}
+	{
+		resp, err := c.Get("http://127.0.0.1:19999")
+		require.NoError(t, err)
+		require.Equal(t, 200, resp.StatusCode)
+	}
+	require.NoError(t, e.Shutdown(context.Background()))
 }

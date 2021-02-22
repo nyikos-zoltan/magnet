@@ -199,10 +199,10 @@ func newMagnet(parent *Magnet) *Magnet {
 	return m
 }
 
-type magnetPlugin = func(*Magnet)
+type Plugin = func(*Magnet)
 
 // New creates a new instance of Magent.
-func New(plugins ...magnetPlugin) *Magnet {
+func New(plugins ...Plugin) *Magnet {
 	m := newMagnet(nil)
 	m.RegisterTypeHook(derivedTypeHook)
 	for _, plugin := range plugins {
