@@ -3,10 +3,10 @@ package magnet_test
 import (
 	"context"
 	"errors"
-	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/nyikos-zoltan/magnet"
 	"github.com/nyikos-zoltan/magnet/internal/dbtx"
@@ -58,7 +58,7 @@ func (s *repo) Query() error {
 }
 
 var dbTXDef = dbtx.DBTx{
-	DBType: reflect.TypeOf((*DB)(nil)),
+	DBType: reflect.TypeOf(&DB{}),
 	Callback: func(c *magnet.Caller, dbI interface{}) error {
 		db := dbI.(*DB)
 		return db.Transaction(func(tx *DB) error {
@@ -76,6 +76,8 @@ type testTx = func(func(transaction.Tx, testTxDeps) error) error
 type HandlerDeps struct {
 	magnet.Derived
 	Tx testTx
+	P  HandlerParam
+	E  echo.Context
 }
 
 type testTxDeps struct {
@@ -83,31 +85,51 @@ type testTxDeps struct {
 	S Service
 }
 
+type HandlerParam struct {
+	Data string `json:"data"`
+}
+
+type HandlerResult struct {
+	Data string `json:"data"`
+}
+
 func Test_Complete(t *testing.T) {
 	m := magnet.New()
 	m.RegisterTypeHook(dbTXDef.SafeTxHook)
-	m.Register(func() *DB { return &DB{} })
-	m.Register(func(d *DB) Repo { return &repo{d} })
-	m.Register(func(r Repo) Service { return &service{r} })
+	m.RegisterMany(
+		func() *DB { return &DB{} },
+		func(d *DB) Repo { return &repo{d} },
+		func(r Repo) Service { return &service{r} },
+		func(e echo.Context) (p HandlerParam, err error) {
+			err = e.Bind(&p)
+			return
+		},
+	)
 	e := echo.New()
+	e.HideBanner, e.HidePort = true, true
+	e.POST("/", m.EchoHandler(func(d HandlerDeps) error {
+		err := d.Tx(func(_ transaction.Tx, t testTxDeps) error {
+			return t.S.Do()
+		})
+		if err != nil {
+			return err
+		}
+		return d.E.JSON(200, HandlerResult(d.P))
+	}))
+
 	go func() {
 		require.Errorf(t, e.Start("127.0.0.1:19999"), "http: Server closed")
 	}()
-	e.GET("/", m.EchoHandler(func(e echo.Context, d HandlerDeps) error {
-		return d.Tx(func(_ transaction.Tx, t testTxDeps) error {
-			return t.S.Do()
-		})
-	}))
-	c := http.Client{}
-	{
-		resp, err := c.Get("http://127.0.0.1:19999")
-		require.NoError(t, err)
-		require.Equal(t, 200, resp.StatusCode)
-	}
-	{
-		resp, err := c.Get("http://127.0.0.1:19999")
-		require.NoError(t, err)
-		require.Equal(t, 200, resp.StatusCode)
-	}
+	c := resty.New()
+	resp, err := c.R().SetBody(HandlerParam{Data: "x"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:19999")
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode())
+	require.Equal(t, &HandlerResult{Data: "x"}, resp.Result())
+
+	resp, err = c.R().SetBody(HandlerParam{Data: "y"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:19999")
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode())
+	require.Equal(t, &HandlerResult{Data: "y"}, resp.Result())
+
 	require.NoError(t, e.Shutdown(context.Background()))
 }
