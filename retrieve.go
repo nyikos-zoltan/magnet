@@ -11,6 +11,8 @@ func (m *Magnet) Retrieve(into interface{}) error {
 	}
 	reqValue := reflect.ValueOf(into).Elem()
 	reqType := reflect.TypeOf(into).Elem()
+	m.runHooks(reqType)
+	m.detectCycles()
 	if node := m.findNode(reqType); node != nil {
 		val, err := node.Build(m)
 		if err != nil {

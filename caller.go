@@ -24,7 +24,11 @@ func (cr CallResults) Error(n int) error {
 }
 
 func (cr CallResults) String(n int) string {
-	return cr.vals[0].String()
+	return cr.vals[n].String()
+}
+
+func (cr CallResults) Value(n int) reflect.Value {
+	return cr.vals[n]
 }
 
 // Caller prepares a method and a number of extra types to be repeatedly called later.
