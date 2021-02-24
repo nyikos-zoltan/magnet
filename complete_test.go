@@ -3,9 +3,12 @@ package magnet_test
 import (
 	"context"
 	"errors"
+	"net"
+	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/ataul443/memnet"
 	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/nyikos-zoltan/magnet"
@@ -93,7 +96,21 @@ type HandlerResult struct {
 	Data string `json:"data"`
 }
 
+func testServerClient(t *testing.T) (*echo.Echo, *resty.Client) {
+	l, _ := memnet.Listen(10, 1000, "127.0.0.1:29999")
+	e := echo.New()
+	e.Listener = l
+	e.HideBanner, e.HidePort = true, true
+
+	c := resty.New()
+	c.GetClient().Transport = &http.Transport{
+		Dial: func(string, string) (net.Conn, error) { return l.Dial() },
+	}
+	return e, c
+}
+
 func Test_Complete(t *testing.T) {
+	req := require.New(t)
 	m := magnet.New()
 	m.RegisterTypeHook(dbTXDef.SafeTxHook)
 	m.RegisterMany(
@@ -105,8 +122,7 @@ func Test_Complete(t *testing.T) {
 			return
 		},
 	)
-	e := echo.New()
-	e.HideBanner, e.HidePort = true, true
+	e, c := testServerClient(t)
 	e.POST("/", m.EchoHandler(func(d HandlerDeps) error {
 		err := d.Tx(func(_ transaction.Tx, t testTxDeps) error {
 			return t.S.Do()
@@ -114,22 +130,24 @@ func Test_Complete(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return d.E.JSON(200, HandlerResult(d.P))
+		r := HandlerResult(d.P)
+		return d.E.JSON(200, r)
 	}))
 
 	go func() {
-		require.Errorf(t, e.Start("127.0.0.1:19999"), "http: Server closed")
+		req.Errorf(e.Start("127.0.0.1:29999"), "http: Server closed")
 	}()
-	c := resty.New()
-	resp, err := c.R().SetBody(HandlerParam{Data: "x"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:19999")
-	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode())
-	require.Equal(t, &HandlerResult{Data: "x"}, resp.Result())
+	resp, err := c.R().SetBody(HandlerParam{Data: "x"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:29999")
+	req.NoError(err)
+	req.Equal(200, resp.StatusCode())
+	req.Equal(&HandlerResult{Data: "x"}, resp.Result())
+	req.NoError(err)
 
-	resp, err = c.R().SetBody(HandlerParam{Data: "y"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:19999")
-	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode())
-	require.Equal(t, &HandlerResult{Data: "y"}, resp.Result())
+	resp, err = c.R().SetBody(HandlerParam{Data: "y"}).SetResult(HandlerResult{}).Post("http://127.0.0.1:29999")
+	req.NoError(err)
+	req.Equal(200, resp.StatusCode())
+	req.Equal(&HandlerResult{Data: "y"}, resp.Result())
+	c.GetClient().CloseIdleConnections()
 
-	require.NoError(t, e.Shutdown(context.Background()))
+	req.NoError(e.Shutdown(context.Background()))
 }

@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/ataul443/memnet v0.0.0-20200413031237-436d77c81cc8
 	github.com/digitalocean/go-workers2 v0.10.0
 	github.com/go-resty/resty/v2 v2.5.0
 	github.com/jinzhu/gorm v1.9.16
