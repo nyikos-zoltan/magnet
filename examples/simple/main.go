@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/nyikos-zoltan/magnet"
@@ -23,5 +24,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(rv.String(0))
+	fmt.Println(rv.String(0))
 }

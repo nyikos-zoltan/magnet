@@ -9,8 +9,20 @@ type Config struct {
 	ConfigValue string
 }
 
-func RootHandler(ctx echo.Context, c *Config) error {
-	return ctx.JSON(200, c)
+type RootArgs struct {
+	Arg string `json:"arg"`
+}
+
+type RootResponse struct {
+	ConfigValue string
+	Arg         string
+}
+
+func RootHandler(ctx echo.Context, c *Config, args RootArgs) error {
+	return ctx.JSON(200, RootResponse{
+		Arg:         args.Arg,
+		ConfigValue: c.ConfigValue,
+	})
 }
 
 func main() {
@@ -19,10 +31,14 @@ func main() {
 		func() *Config {
 			return &Config{"some_value"}
 		},
+		func(e echo.Context) (r RootArgs, err error) {
+			err = e.Bind(&r)
+			return
+		},
 	)
 
 	e := echo.New()
-	e.GET("/", m.EchoHandler(RootHandler))
+	e.POST("/", m.EchoHandler(RootHandler))
 	if err := e.Start(":8081"); err != nil {
 		panic(err.Error())
 	}
