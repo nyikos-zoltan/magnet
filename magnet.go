@@ -25,6 +25,18 @@ func (m *Magnet) validate(requires []reflect.Type) {
 	}
 }
 
+func (m *Magnet) findNodeByPred(pred func(reflect.Type) bool) *Node {
+	for t, n := range m.providerMap {
+		if pred(t) {
+			return n
+		}
+	}
+	if m.parent == nil {
+		return nil
+	}
+	return m.parent.findNodeByPred(pred)
+}
+
 func (m *Magnet) findNode(t reflect.Type) *Node {
 	if node, has := m.providerMap[t]; has {
 		return node

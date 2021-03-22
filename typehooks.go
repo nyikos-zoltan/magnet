@@ -21,6 +21,10 @@ func (h Hook) ValidateDeps(deps []reflect.Type) {
 	h.m.validate(deps)
 }
 
+func (h Hook) FindNode(pred func(reflect.Type) bool) *Node {
+	return h.m.findNodeByPred(pred)
+}
+
 func (th *typeHooks) runHooks(m *Magnet, t reflect.Type) {
 	for _, hook := range th.hooks {
 		if hook(Hook{m}, t) {

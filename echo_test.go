@@ -113,6 +113,28 @@ func (s *EchoTestSuite) TestPanicHandlerCantBeBuilt() {
 	})
 }
 
+func (s *EchoTestSuite) TestOkErrorHandler() {
+	req := s.Require()
+	type a struct{ int }
+	s.m.Value(a{1})
+	called := false
+	handler := s.m.EchoErrorHandler(func(e error, ctx echo.Context, a a) {
+		req.EqualError(e, "some error")
+		req.Equal(s.ctx, ctx)
+		req.Equal(1, a.int)
+		called = true
+	})
+	handler(errors.New("some error"), s.ctx)
+	req.True(called)
+}
+
+func (s *EchoTestSuite) TestPanicErrorHandlerInvalid() {
+	req := s.Require()
+	req.PanicsWithValue("EchoErrorHandler methods need to take at least an error and the echo.Context", func() {
+		s.m.EchoErrorHandler(func() {})
+	})
+}
+
 func TestEchoSuite(t *testing.T) {
 	suite.Run(t, new(EchoTestSuite))
 }
