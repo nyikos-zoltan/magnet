@@ -13,14 +13,18 @@ func calculateRequiredFn(ftype reflect.Type) []reflect.Type {
 	return rv
 }
 
-func NewValueNode(v interface{}, owner *Magnet) *Node {
-	val := reflect.ValueOf(v)
+func newRawValueNode(val reflect.Value, owner *Magnet) *Node {
 	vtype := val.Type()
 	return &Node{
 		owner:    owner,
 		provides: vtype,
 		value:    val,
 	}
+}
+
+func NewValueNode(v interface{}, owner *Magnet) *Node {
+	val := reflect.ValueOf(v)
+	return newRawValueNode(val, owner)
 }
 
 func NewEmptyNode(t reflect.Type, owner *Magnet) *Node {
@@ -91,7 +95,9 @@ func unwrapValue(v reflect.Value) reflect.Value {
 }
 
 func (n *Node) Reset() {
-	n.value = reflect.Value{}
+	if n.factory != (reflect.Value{}) {
+		n.value = reflect.Value{}
+	}
 }
 
 // Build uses the factory method to generate its value, then stores it for later use

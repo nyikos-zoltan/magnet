@@ -17,6 +17,24 @@ func validateEchoHandlerFn(fntype reflect.Type) {
 
 var ctxType = reflect.TypeOf((*echo.Context)(nil)).Elem()
 var handlerType = reflect.TypeOf((*echo.HandlerFunc)(nil)).Elem()
+var errType = reflect.TypeOf((*error)(nil)).Elem()
+
+func validateEchoErrorHandlerFn(fntype reflect.Type) {
+	hasError := false
+	hasCtx := false
+
+	for i := 0; i < fntype.NumIn(); i++ {
+		if fntype.In(i) == ctxType {
+			hasCtx = true
+		} else if fntype.In(i) == errType {
+			hasError = true
+		}
+	}
+
+	if !hasError || !hasCtx {
+		panic("EchoErrorHandler methods need to take at least an error and the echo.Context")
+	}
+}
 
 // EchoHandler creates a new echo.HandlerFunc that injects the required values
 func (m *Magnet) EchoHandler(fn interface{}) func(echo.Context) error {
@@ -38,5 +56,13 @@ func (m *Magnet) EchoMiddleware(fn interface{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		rv, _ := caller.Call(next)
 		return rv.Interface(0).(echo.HandlerFunc)
+	}
+}
+
+func (m *Magnet) EchoErrorHandler(fn interface{}) echo.HTTPErrorHandler {
+	validateEchoErrorHandlerFn(reflect.TypeOf(fn))
+	caller := m.NewCaller(fn, ctxType, errType)
+	return func(e error, c echo.Context) {
+		_, _ = caller.Call(c, e)
 	}
 }
